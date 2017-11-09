@@ -3,11 +3,13 @@ import matplotlib.pyplot as plt
 from scipy.io import wavfile
 from python_speech_features import mfcc
 import os
+from pandas import to_pickle, read_pickle
 
 def set_length(x, cutoff=14400):
     '''Gives segments appropriate length by either slicing or zero-padding.
     Default length/cutoff is 900 msec.
     Returns input signal with modified length.'''
+    
     num_samples = len(x)
     if num_samples > cutoff:
         return x[:cutoff]
@@ -18,9 +20,9 @@ def set_length(x, cutoff=14400):
 def get_coefficients(x, label, frame_size=14400, step_size=1600):
     '''Partitions sound signal into frames.
     Default is 900 msec frames with 100 msec steps.
-    Returns MFCC coefficients of the input signal as numpy array:
-    [[[2D data], label], [[2D data], label], ... , [[2D data], label]]
-    '''
+    Calculates MFCC coefficients of the input signal.
+    Returns a list on the following format, where the MFCC data is a 2D np array:
+    [[[2D data], label], [[2D data], label], ... , [[2D data], label]]'''
     
     if len(x) < 14400:
         x = set_length(x)
@@ -30,15 +32,13 @@ def get_coefficients(x, label, frame_size=14400, step_size=1600):
     for i in range (0, x_length-frame_size+1, step_size):
         coeff = mfcc(x[i:(i+frame_size)])
         frames.append([coeff, label])
-    return np.asarray(frames)
+    return frames
 
-def preprocess():
-    '''Reads all training data and gets MFCC coefficients.
-    Returns np array with all MFCC data + label.
-    '''
-    filepath = data_path = os.getcwd() + "\\data\\train\\"
-    os.chdir(filepath)
-    files = os.listdir()
+def preprocess(filepath):
+    '''Reads all data from filepath and gets MFCC coefficients.
+    Returns combined list with MFCC data + label for all files.'''
+
+    files = os.listdir(filepath)
     num_of_files = len(files)
 
     data = []
@@ -50,14 +50,33 @@ def preprocess():
         else:
             label = 0
 
-        fs, x = wavfile.read(f)
-        data.append(get_coefficients(x, label))
+        fs, x = wavfile.read(filepath + f)
+        data.extend(get_coefficients(x, label))
         print(str(i) + "/" + str(num_of_files) + " files preprocessed.")
         i+=1
     
-    return np.asarray(data)
+    return data
 
+def get_train_data():
+    '''Reads and returns preprocessed training data from pickle if it exists.
+    If not, preprocesses training data, writes to pickle, and returns.'''
+
+    if os.path.isfile("data/train.pickle"):
+        return read_pickle("data/train.pickle")
+    data = preprocess("data/train/")
+    to_pickle(data, "data/train.pickle")
+    return data
+
+def get_test_data():
+    '''Reads and returns preprocessed test data from pickle if it exists.
+    If not, preprocesses test data, writes to pickle, and returns.'''
+
+    if os.path.isfile("data/test.pickle"):
+        return read_pickle("data/test.pickle")
+    data = preprocess("data/test/")
+    to_pickle(data, "data/test.pickle")
+    return data
 
 if __name__ == '__main__':
-    #data = preprocess()
-    #np.save("data.npy", data)
+    get_train_data()
+    get_test_data()
