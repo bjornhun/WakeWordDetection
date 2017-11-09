@@ -17,24 +17,22 @@ def set_length(x, cutoff=14400):
         zeros = cutoff - num_samples
         return np.append(x, [0]*zeros)
 
-def get_coefficients(x, label, frame_size=14400, step_size=1600):
+def get_coefficients(x, frame_size=14400):
     '''Partitions sound signal into frames.
-    Default is 900 msec frames with 100 msec steps.
+    Default is 900 msec frames.
+    Frames start at first value over 5000 in order to encapsulate wakeword.
+    Frames shorter than defined frame size get zero-padded.
     Calculates MFCC coefficients of the input signal.
-    Returns a list on the following format, where the MFCC data is a 2D np array:
-    [[[2D data], label], [[2D data], label], ... , [[2D data], label]]'''
+    Returns MFCC data as 89x13 numpy array'''
+
+    for i in range(len(x)):
+        if x[i] > 5000:
+            break
     
-    if len(x) < 14400:
-        x = set_length(x)
-    
-    x_length = len(x)
-    data = []
-    labels = []
-    for i in range (0, x_length-frame_size+1, step_size):
-        coeff = mfcc(x[i:(i+frame_size)])
-        data.append(coeff)
-        labels.append(label)
-    return data, labels
+    if len(x[i:]) < frame_size:
+        x = set_length(x, cutoff=(i+frame_size))
+
+    return mfcc(x[i:i+frame_size])
 
 def preprocess(filepath):
     '''Reads all data from filepath and gets MFCC coefficients.
@@ -49,14 +47,13 @@ def preprocess(filepath):
     count = 1
     for f in files:
         if f.endswith("042.wav"):
-            label = 1
+            y.append(1)
         else:
-            label = 0
+            y.append(0)
 
         fs, x = wavfile.read(filepath + f)
-        data, labels = get_coefficients(x, label)
-        X.extend(data)
-        y.extend(labels)
+
+        X.append(get_coefficients(x))
 
         print(str(count) + "/" + str(num_of_files) + " files preprocessed.")
         count+=1
