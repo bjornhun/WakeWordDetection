@@ -1,8 +1,12 @@
+### Simple MLP based on the following tutorial: https://cambridgespark.com/content/tutorials/deep-learning-for-complete-beginners-recognising-handwritten-digits/index.html
+### Changed into binary classifier by using sigmoid as activation function in output layer, and binary_crossentropy as loss function
+### 20 epochs gives around 92-95 % accuracy
+
+import numpy as np
 from keras.models import Model
 from keras.layers import Input, Dense
 from keras.utils import np_utils
 from pandas import read_pickle
-import numpy as np
 
 # Define hyperparameters
 batch_size = 128
