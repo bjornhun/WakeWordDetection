@@ -4,6 +4,7 @@ from scipy.io import wavfile
 from python_speech_features import mfcc
 import os
 from pandas import to_pickle, read_pickle
+from random import randint
 
 def set_length(x, cutoff=14400):
     '''Gives segments appropriate length by either slicing or zero-padding.
@@ -32,10 +33,14 @@ def get_coefficients(x, is_wakeword, frame_size=14400, step_size=1600):
     Returns MFCC data as 89x13 numpy array'''
 
     if is_wakeword:
-        for i in range(len(x)):
+        # noisy start
+        for i in range(3000, len(x)):
             if x[i] > 5000:
                 break
         
+        # ensure whole wakeword is included
+        i -= step_size
+
         if len(x[i:]) < frame_size:
             x = set_length(x, cutoff=(i+frame_size))
 
@@ -47,15 +52,18 @@ def get_coefficients(x, is_wakeword, frame_size=14400, step_size=1600):
     else:
         frames = []
         x_length = len(x)
-        
+
         if x_length < frame_size:
             x = set_length(x)
+            x_length = len(x)
 
         for i in range (0, x_length-frame_size+1, step_size):
             coeff = mfcc(x[i:(i+frame_size)])
             coeff = normalize(coeff)
             frames.append(coeff)
-        return frames
+        i = randint(0, len(frames)-1)
+
+        return frames[i]
 
 def preprocess(filepath):
     '''Reads all data from filepath and gets MFCC coefficients.
@@ -74,10 +82,8 @@ def preprocess(filepath):
             X.append(get_coefficients(x, True))
             y.append(1)
         else:
-            coeff = get_coefficients(x, False)
-            for c in coeff:
-                X.append(c)
-                y.append(0)
+            X.append(get_coefficients(x, False))
+            y.append(0)
         print(str(count) + "/" + str(num_of_files) + " files preprocessed.")
         count+=1
     

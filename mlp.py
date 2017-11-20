@@ -6,7 +6,12 @@
 ### 
 ### New data (multiple frames per neg):
 ### Acc (test, rec): 99.59, 98.63
-### F-score (test, rec): 35.8, 0.56
+### F-score (test, rec): 0.36, 0.56
+###
+### New new data (random frame per neg):
+### Acc (test, rec): 98.1, 73.1
+### F-score (test, rec): 0.956, 0.666
+
 
 import numpy as np
 from keras.models import Model, load_model
@@ -84,7 +89,12 @@ print('Test accuracy:', score[1])
 print('f-score:', score[2])
 
 print("Recorded data:")
-score = model.evaluate(X_rec, y_rec, verbose=0)
+score = model.evaluate(X_rec, y_rec, verbose=1)
 print('Test loss:', score[0])
 print('Test accuracy:', score[1])
 print('f-score:', score[2])
+
+print("predictions:")
+print([int(round(x[0])) for x in model.predict(X_rec)])
+print("true:")
+print(y_rec)
