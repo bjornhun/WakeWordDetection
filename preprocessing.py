@@ -17,7 +17,13 @@ def set_length(x, cutoff=14400):
         zeros = cutoff - num_samples
         return np.append(x, [0]*zeros)
 
-def get_coefficients(x, frame_size=14400):
+def normalize(coeff):
+    'Normalizes numpy array of coefficients'
+    coeff += np.abs(coeff.min())
+    coeff /= coeff.max()
+    return coeff
+
+def get_coefficients(x, is_wakeword, frame_size=14400, step_size=1600):
     '''Partitions sound signal into frames.
     Default is 900 msec frames.
     Frames start at first value over 5000 in order to encapsulate wakeword.
@@ -25,14 +31,31 @@ def get_coefficients(x, frame_size=14400):
     Calculates MFCC coefficients of the input signal.
     Returns MFCC data as 89x13 numpy array'''
 
-    for i in range(len(x)):
-        if x[i] > 5000:
-            break
-    
-    if len(x[i:]) < frame_size:
-        x = set_length(x, cutoff=(i+frame_size))
+    if is_wakeword:
+        for i in range(len(x)):
+            if x[i] > 5000:
+                break
+        
+        if len(x[i:]) < frame_size:
+            x = set_length(x, cutoff=(i+frame_size))
 
-    return mfcc(x[i:i+frame_size])
+        coeff = mfcc(x[i:i+frame_size])
+        coeff = normalize(coeff)
+
+        return coeff
+
+    else:
+        frames = []
+        x_length = len(x)
+        
+        if x_length < frame_size:
+            x = set_length(x)
+
+        for i in range (0, x_length-frame_size+1, step_size):
+            coeff = mfcc(x[i:(i+frame_size)])
+            coeff = normalize(coeff)
+            frames.append(coeff)
+        return frames
 
 def preprocess(filepath):
     '''Reads all data from filepath and gets MFCC coefficients.
@@ -46,19 +69,19 @@ def preprocess(filepath):
 
     count = 1
     for f in files:
+        fs, x = wavfile.read(filepath + f)
         if f.endswith("042.wav"):
+            X.append(get_coefficients(x, True))
             y.append(1)
         else:
-            y.append(0)
-
-        fs, x = wavfile.read(filepath + f)
-
-        X.append(get_coefficients(x))
-
+            coeff = get_coefficients(x, False)
+            for c in coeff:
+                X.append(c)
+                y.append(0)
         print(str(count) + "/" + str(num_of_files) + " files preprocessed.")
         count+=1
     
-    return X, y
+    return np.asarray(X), y
 
 def get_train_data():
     '''Reads and returns preprocessed training data from pickle if it exists.
@@ -67,8 +90,8 @@ def get_train_data():
     if os.path.isfile("data/train.pickle"):
         return read_pickle("data/train.pickle")
     X_train, y_train = preprocess("data/train/")
-    to_pickle([X_train, y_train], "data/train.pickle")
-    return [X_train, y_train]
+    to_pickle((X_train, y_train), "data/train.pickle")
+    return (X_train, y_train)
 
 def get_test_data():
     '''Reads and returns preprocessed test data from pickle if it exists.
@@ -77,9 +100,20 @@ def get_test_data():
     if os.path.isfile("data/test.pickle"):
         return read_pickle("data/test.pickle")
     X_test, y_test = preprocess("data/test/")
-    to_pickle([X_test, y_test], "data/test.pickle")
-    return [X_test, y_test]
+    to_pickle((X_test, y_test), "data/test.pickle")
+    return (X_test, y_test)
+
+def get_rec_data():
+    '''Reads and returns preprocessed recorded data from pickle if it exists.
+    If not, preprocesses test data, writes to pickle, and returns.'''
+
+    if os.path.isfile("data/rec.pickle"):
+        return read_pickle("data/rec.pickle")
+    X_rec, y_rec = preprocess("data/recordings/")
+    to_pickle((X_rec, y_rec), "data/rec.pickle")
+    return (X_rec, y_rec)
 
 if __name__ == '__main__':
     get_train_data()
     get_test_data()
+    get_rec_data()
