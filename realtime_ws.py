@@ -7,12 +7,12 @@ from keras.models import load_model
 import custom_metrics
 import threading
 
-CHUNKSIZE = 16000 # fixed chunk size
+CHUNKSIZE = 8000 # fixed chunk size
 
-model = load_model('models/cnn_ws_b.h5', custom_objects={'fmeasure': custom_metrics.fmeasure})
+model = load_model('models/cnn_ws.h5', custom_objects={'fmeasure': custom_metrics.fmeasure})
 
 count=1
-buff = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+buff = [5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5]
 
 print("Listening...")
 
@@ -24,12 +24,15 @@ def rec():
     stream = p.open(format=pyaudio.paInt16, channels=1, rate=16000, input=True, frames_per_buffer=CHUNKSIZE)
     data = stream.read(CHUNKSIZE)
     numpydata = np.fromstring(data, dtype=np.int16)
-    X = normalize(mfcc(numpydata)).reshape(1, 99, 13, 1)
-    pred = [int(round(x[0])) for x in model.predict(X)]
+    X = normalize(mfcc(numpydata)).reshape(1, 49, 13, 1)
+    y_prob = model.predict(X) 
+    y_class = y_prob.argmax(axis=-1)    
+    if np.sum(np.abs(numpydata)) < 10000000:
+        y_class = [2]
     buff.pop(0)
-    buff.append(pred[0])
-    print(buff)
-    if (buff[-1] == 1 and buff[-2] == 1 and buff[-3] == 0):
+    buff.append(y_class[0])
+    if (buff[-1] == 1 and 0 in buff):
+        print(buff)
         print("Wake word detected #", count)
         count+=1        
     

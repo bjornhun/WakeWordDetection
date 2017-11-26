@@ -6,13 +6,15 @@ import os
 from pandas import to_pickle, read_pickle
 from random import randint
 
-def set_length(x, cutoff=16000):
+def set_length(x, placement="start", cutoff=16000):
     '''Gives segments appropriate length by either slicing or zero-padding.
     Default length/cutoff is 900 msec.
     Returns input signal with modified length.'''
 
     num_samples = len(x)
     if num_samples > cutoff:
+        if placement == "end":
+            return x[-cutoff:]
         return x[:cutoff]
     else:
         zeros = cutoff - num_samples
@@ -24,7 +26,7 @@ def normalize(coeff):
     coeff /= coeff.max()
     return coeff
 
-def get_coefficients(x, is_wakeword, frame_size=16000, step_size=1600):
+def get_coefficients(x, label, frame_size=16000, step_size=1600):
     '''Partitions sound signal into frames.
     Default is 900 msec frames.
     Frames start at first value over 5000 in order to encapsulate wakeword.
@@ -32,7 +34,19 @@ def get_coefficients(x, is_wakeword, frame_size=16000, step_size=1600):
     Calculates MFCC coefficients of the input signal.
     Returns MFCC data as 89x13 numpy array'''
 
-    if is_wakeword:
+    if label == 0:
+        x = set_length(x, placement="end")
+        coeff = mfcc(x)
+        coeff = normalize(coeff)
+        return coeff
+
+    elif label == 1:
+        x = set_length(x)
+        coeff = mfcc(x)
+        coeff = normalize(coeff)
+        return coeff
+
+    elif label == 3:
         # noisy start
         for i in range(3000, len(x)):
             if x[i] > 5000:
@@ -63,7 +77,7 @@ def get_coefficients(x, is_wakeword, frame_size=16000, step_size=1600):
             frames.append(coeff)
         i = randint(0, len(frames)-1)
 
-        return frames[i]
+        return frames[int(len(frames)/2)]
 
 def preprocess(filepath):
     '''Reads all data from filepath and gets MFCC coefficients.
@@ -76,19 +90,26 @@ def preprocess(filepath):
     y = []
 
     count = 1
+    neg = 1
     for f in files:
         fs, x = wavfile.read(filepath + f)
+
         if f.endswith("042.wav"):
-            X.append(get_coefficients(x, True))
+            X.append(get_coefficients(x, 3))
             y.append(1)
-        elif (f.endswith("043.wav") or f.endswith("044.wav")):
-            X.append(get_coefficients(x, True))
+        if (f.endswith("door.wav")):
+            X.append(get_coefficients(x, 0))
+            y.append(0)
+        elif (f.endswith("open.wav")):
+            X.append(get_coefficients(x, 1))
             y.append(0)
         else:
-            X.append(get_coefficients(x, False))
+            if neg % 4 != 0:
+                neg += 1
+                continue
+            X.append(get_coefficients(x, 2))
             y.append(0)
-            X.append(get_coefficients(x, False))
-            y.append(0)
+            neg += 1
         print(str(count) + "/" + str(num_of_files) + " files preprocessed.")
         count+=1
     
@@ -98,33 +119,22 @@ def get_train_data():
     '''Reads and returns preprocessed training data from pickle if it exists.
     If not, preprocesses training data, writes to pickle, and returns.'''
 
-    if os.path.isfile("data/train.pickle"):
-        return read_pickle("data/train.pickle")
-    X_train, y_train = preprocess("data/train/")
-    to_pickle((X_train, y_train), "data/train.pickle")
+    if os.path.isfile("data_ws/train.pickle"):
+        return read_pickle("data_ws/train.pickle")
+    X_train, y_train = preprocess("data_ws/train/")
+    to_pickle((X_train, y_train), "data_ws/train.pickle")
     return (X_train, y_train)
 
 def get_test_data():
     '''Reads and returns preprocessed test data from pickle if it exists.
     If not, preprocesses test data, writes to pickle, and returns.'''
 
-    if os.path.isfile("data/test.pickle"):
-        return read_pickle("data/test.pickle")
-    X_test, y_test = preprocess("data/test/")
-    to_pickle((X_test, y_test), "data/test.pickle")
+    if os.path.isfile("data_ws/test.pickle"):
+        return read_pickle("data_ws/test.pickle")
+    X_test, y_test = preprocess("data_ws/test/")
+    to_pickle((X_test, y_test), "data_ws/test.pickle")
     return (X_test, y_test)
-
-def get_rec_data():
-    '''Reads and returns preprocessed recorded data from pickle if it exists.
-    If not, preprocesses test data, writes to pickle, and returns.'''
-
-    if os.path.isfile("data/rec.pickle"):
-        return read_pickle("data/rec.pickle")
-    X_rec, y_rec = preprocess("data/recordings/")
-    to_pickle((X_rec, y_rec), "data/rec.pickle")
-    return (X_rec, y_rec)
 
 if __name__ == '__main__':
     get_train_data()
     get_test_data()
-    get_rec_data()
