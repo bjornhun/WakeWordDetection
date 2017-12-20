@@ -8,8 +8,6 @@ from pandas import read_pickle
 from sklearn.metrics import confusion_matrix
 
 batch_size = 128
-epochs = 10
-filename = "mlp_100.h5"
 
 X_train, y_train = read_pickle("data/train.pickle")
 X_test, y_test = read_pickle("data/test.pickle")
@@ -22,34 +20,34 @@ X_test = X_test.reshape(num_test, rows * columns)
 
 def train_model(X_train, y_train, path):
     model = Sequential()
-    model.add(Dense(512, activation='relu', input_shape=(rows * columns,)))
-    model.add(Dense(512, activation='relu'))
-    model.add(Dense(1, activation='sigmoid'))
+    model.add(Dense(512,
+                    activation='relu',
+                    input_shape=(rows * columns,)))
+    model.add(Dense(512,
+                    activation='relu'))
+    model.add(Dense(1,
+                    activation='sigmoid'))
 
-    model.compile(loss='binary_crossentropy', optimizer = 'adam', metrics=['accuracy'])
-    model.fit(X_train, y_train, batch_size=batch_size, epochs=epochs, verbose=1, validation_split=0.1)
+    model.compile(loss='binary_crossentropy',
+                    optimizer = 'adam',
+                    metrics=['accuracy'])
+    model.fit(X_train, y_train,
+                    batch_size=batch_size,  
+                    epochs=epochs, verbose=1,
+                    validation_split=0.1)
     model.save("models/" + filename)
 
     return model
 
 
-'''
 epochs = 10
 filename = "mlp10.h5"
 train_model(X_train, y_train, "models/" + filename)
+
 epochs = 50
 filename = "mlp50.h5"
 train_model(X_train, y_train, "models/" + filename)
+
 epochs = 100
 filename = "mlp100.h5"
 train_model(X_train, y_train, "models/" + filename)
-'''
-
-
-model = load_model('models/' + filename)
-
-print("Test data:")
-score = model.evaluate(X_test, y_test, verbose=0)
-print('Test loss:', score[0])
-print('Test accuracy:', score[1])
-print(confusion_matrix(y_test, [int(round(x[0])) for x in model.predict(X_test)]))

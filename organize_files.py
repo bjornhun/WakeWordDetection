@@ -22,25 +22,14 @@ for folder in ["male\\", "female\\"]:
 
         os.chdir(rsr_path + folder + subfolder)
         files = os.listdir()
-        #pos = [f for f in files if f.endswith("042.wav")]
-        #neg = sample([f for f in files if f not in pos], len(pos)*3)
+        pos = [f for f in files if f.endswith("042.wav")]
+        neg = sample([f for f in files if f not in pos], len(pos)*3)
 
-        #for f in pos:
-        #    command = ("copy " +  f + " " + target + f)
-        #    os.system(command)
-
-        #for f in neg:
-        #    command = ("copy " +  f + " " + target + f)
-        #    os.system(command)
-
-        neg_close = [f for f in files if f.endswith("043.wav")]
-        neg_hold = [f for f in files if f.endswith("044.wav")]
-
-        for f in neg_close:
+        for f in pos:
             command = ("copy " +  f + " " + target + f)
             os.system(command)
 
-        for f in neg_hold:
+        for f in neg:
             command = ("copy " +  f + " " + target + f)
             os.system(command)
 
